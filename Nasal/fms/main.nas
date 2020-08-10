@@ -8,6 +8,8 @@ var slow_update = func () {
 };
 
 var modifiedFlightplan = nil;
+var alternateFlightplan = nil;
+var modifiedAlternateFlightplan = nil;
 
 var calcPressureAlt = func (elev, qnh) {
     return 145366.45 * (1.0 - math.pow(qnh / 1013.25, 0.190284));
@@ -42,9 +44,9 @@ var updateTakeoffRunway = func () {
 };
 
 
-var cloneFlightplan = func (old = nil) {
+var cloneFlightplan = func (old) {
     if (old == nil) {
-        old = flightplan();
+        return nil;
     }
     var new = old.clone();
     new.current = old.current;
@@ -52,32 +54,48 @@ var cloneFlightplan = func (old = nil) {
     return new;
 };
 
-var getModifyableFlightplan = func () {
+var getModifyableFlightplans = func () {
     if (modifiedFlightplan == nil) {
         var fp = flightplan();
         if (fp == nil) {
             modifiedFlightplan = createFlightplan();
         }
         else {
-            modifiedFlightplan = cloneFlightplan();
+            modifiedFlightplan = cloneFlightplan(fp);
         }
+        modifiedAlternateFlightplan = cloneFlightplan(alternateFlightplan);
     }
-    return modifiedFlightplan;
+    return [modifiedFlightplan, modifiedAlternateFlightplan];
+};
+
+var getModifyableFlightplan = func () {
+    var fps = getModifyableFlightplans();
+    return fps[0];
+};
+
+var getModifyableAlternateFlightplan = func () {
+    var fps = getModifyableFlightplans();
+    return fps[1];
+};
+
+var getVisibleFlightplans = func () {
+    if (modifiedFlightplan == nil) {
+        return [flightplan(), alternateFlightplan];
+    }
+    else {
+        return [modifiedFlightplan, modifiedAlternateFlightplan];
+    }
 };
 
 # Get whichever flightplan is currently "visible" in the RTE, FPL, etc., views.
 # If a flightplan is currently being edited, return this draft, otherwise, the
 # active flightplan.
 var getVisibleFlightplan = func () {
-    if (modifiedFlightplan == nil) {
-        return flightplan();
-    }
-    else {
-        return modifiedFlightplan;
-    }
+    var fps = getVisibleFlightplans();
+    return fps[0];
 };
 
-var commitFlightplan = func () {
+var commitFlightplans = func () {
     if (modifiedFlightplan != nil) {
         var current = math.max(0, modifiedFlightplan.current);
         var fp0 = flightplan();
@@ -93,12 +111,27 @@ var commitFlightplan = func () {
             updateTakeoffRunway();
         }
     }
-    return flightplan();
+    if (modifiedAlternateFlightplan != nil) {
+        alternateFlightplan = modifiedAlternateFlightplan;
+        modifiedAlternateFlightplan = nil;
+    }
+    return [flightplan(), alternateFlightplan];
+};
+
+var commitFlightplan = func () {
+    var fps = commitFlightplans();
+    return fps[0];
+};
+
+var discardFlightplans = func () {
+    modifiedFlightplan = nil;
+    modifiedAlternateFlightplan = nil;
+    return [flightplan(), alternateFlightplan];
 };
 
 var discardFlightplan = func () {
-    modifiedFlightplan = nil;
-    return flightplan();
+    var fps = discardFlightplans();
+    return fps[0];
 };
 
 var initDeparture = func () {
