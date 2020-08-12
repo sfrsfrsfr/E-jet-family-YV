@@ -1260,7 +1260,9 @@
     </input>
 
     <nasal>
-        <file>Aircraft/E-jet-family/Nasal/u.nas</file>
+        <u>
+            <file>Aircraft/E-jet-family/Nasal/u.nas</file>
+        </u>
         <fastercanvas>
             <file>Aircraft/E-jet-family/Nasal/fastercanvas.nas</file>
         </fastercanvas>

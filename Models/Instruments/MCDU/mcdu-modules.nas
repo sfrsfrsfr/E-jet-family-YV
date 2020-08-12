@@ -245,8 +245,8 @@ var FlightPlanModule = {
             m.fpStatus = 'MOD';
         }
         else {
-            m.fp = flightplan();
-            if (m.fp == nil) {
+            m.fps = [flightplan(), fms.alternateFlightplan];
+            if (m.fps[0] == nil) {
                 m.fpStatus = '';
                 m.fps = fms.getModifyableFlightplans();
             }
@@ -293,8 +293,8 @@ var FlightPlanModule = {
             return numPages;
         }
         else {
-            var numEntries = me.fp.getPlanSize();
-            var firstEntry = me.fp.current - 1;
+            var numEntries = me.fps[0].getPlanSize();
+            var firstEntry = me.fps[0].current - 1;
             return math.max(1, math.ceil((numEntries - firstEntry) / 5));
         }
     },
@@ -448,7 +448,7 @@ var FlightPlanModule = {
             };
         }
         else {
-            var waypoints = fms.getRouteLegs(me.fp);
+            var waypoints = fms.getRouteLegs(me.fps[0]);
             var numWaypoints = size(waypoints);
             var firstWP = (p - 1) * 5;
             me.views = [];
@@ -511,8 +511,8 @@ var FlightPlanModule = {
     },
 
     loadPageItemsFPL: func (p) {
-        var numWaypoints = me.fp.getPlanSize();
-        var firstEntry = math.max(0, me.fp.current - 1);
+        var numWaypoints = me.fps[0].getPlanSize();
+        var firstEntry = math.max(0, me.fps[0].current - 1);
         var firstWP = p * 5 + firstEntry;
         var transitionAlt = getprop("/controls/flight/transition-alt");
         me.views = [];
@@ -524,7 +524,7 @@ var FlightPlanModule = {
         }
         for (var i = 0; i < 5; i += 1) {
             var wpi = firstWP + i;
-            var wp = me.fp.getWP(wpi);
+            var wp = me.fps[0].getWP(wpi);
             var lsk = "L" ~ (i + 1);
             var rsk = "R" ~ (i + 1);
             if (wp == nil) {
@@ -694,7 +694,7 @@ var FlightPlanModule = {
                 }
             });
         }
-        else if (me.fp.departure_runway == nil or me.fp.sid == nil) {
+        else if (me.fps[0].departure_runway == nil or me.fp.sid == nil) {
             label = "DEPARTURE";
             key = "DEPARTURE";
         }

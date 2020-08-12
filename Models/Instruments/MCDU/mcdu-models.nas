@@ -172,7 +172,7 @@ var makeAirportModel = func(owner, key) {
     return FuncModel.new(key,
         func () {
             var lens = fpLenses[key];
-            var ap = lens.get(owner.fp);
+            var ap = lens.get(owner.fps[0]);
             if (ap == nil) return "----";
             return ap.id;
         },
@@ -182,14 +182,14 @@ var makeAirportModel = func(owner, key) {
             var aps = findAirportsByICAO(icao);
             if (size(aps) == 1) {
                 owner.startEditing();
-                lens.set(owner.fp, aps[0]);
+                lens.set(owner.fps[0], aps[0]);
                 owner.fullRedraw();
             }
         },
         func () {
             var lens = fpLenses[key];
             owner.startEditing();
-            lens.set(owner.fp, nil);
+            lens.set(owner.fps[0], nil);
             owner.fullRedraw();
         });
 };
