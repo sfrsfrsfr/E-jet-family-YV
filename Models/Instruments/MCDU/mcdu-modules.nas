@@ -241,14 +241,14 @@ var FlightPlanModule = {
         m.parents = prepended(FlightPlanModule, m.parents);
         m.specialMode = specialMode;
         if (fms.modifiedFlightplan != nil) {
-            m.fp = fms.modifiedFlightplan;
+            m.fps = [fms.modifiedFlightplan, fms.modifiedAlternateFlightplan];
             m.fpStatus = 'MOD';
         }
         else {
             m.fp = flightplan();
             if (m.fp == nil) {
                 m.fpStatus = '';
-                m.fp = fms.getModifyableFlightplan();
+                m.fps = fms.getModifyableFlightplans();
             }
             else {
                 m.fpStatus = 'ACT';
@@ -260,32 +260,37 @@ var FlightPlanModule = {
 
     startEditing: func () {
         if (me.fpStatus == 'ACT') {
-            me.fp = fms.getModifyableFlightplan();
+            me.fps = fms.getModifyableFlightplans();
             me.fpStatus = 'MOD';
         }
     },
 
     finishEditing: func () {
         if (me.fpStatus != 'ACT') {
-            me.fp = fms.commitFlightplan();
+            me.fps = fms.commitFlightplans();
             me.fpStatus = 'ACT';
         }
     },
 
     cancelEditing: func () {
         if (me.fpStatus != 'ACT') {
-            me.fp = fms.discardFlightplan();
+            me.fps = fms.discardFlightplans();
             me.fpStatus = 'ACT';
         }
     },
 
     getNumPages: func () {
         if (me.specialMode == 'ROUTE') {
-            var legs = fms.getRouteLegs(me.fp);
-            var numEntries = size(legs);
-            # one extra page at the beginning, one extra entry for the
-            # destination.
-            return math.max(1, math.ceil((numEntries + 1) / 5)) + 1;
+            var legs = [];
+            var numEntries = 1;
+            var numPages = 1; # first page is "title" page
+            legs = fms.getRouteLegs(me.fps[0]);
+            numEntries = size(legs) + 1;
+            numPages += math.ceil(numEntries / 5);
+            legs = (me.fps[1] == nil) ? [] : fms.getRouteLegs(me.fps[1]);
+            numEntries = size(legs) + 1;
+            numPages += math.ceil(numEntries / 5);
+            return numPages;
         }
         else {
             var numEntries = me.fp.getPlanSize();
@@ -314,11 +319,13 @@ var FlightPlanModule = {
         return me.fpStatus ~ ((me.specialMode == 'ROUTE') ? " RTE" : " FLT PLAN");
     },
 
-    findWaypointByID: func (wpid) {
-        var fst = math.max(0, me.fp.current);
+    findWaypointByID: func (wpid, fpix = 0) {
+        if (me.fps[fpix] == nil) return nil;
 
-        for (var i = fst; i < me.fp.getPlanSize(); i += 1) {
-            var wp = me.fp.getWP(i);
+        var fst = math.max(0, me.fps[fpix].current);
+
+        for (var i = fst; i < me.fps[fpix].getPlanSize(); i += 1) {
+            var wp = me.fps[fpix].getWP(i);
             if (wp.id == wpid) {
                 return wp;
             }
@@ -327,10 +334,10 @@ var FlightPlanModule = {
     },
 
     findLastEnrouteWP: func () {
-        if (me.fp == nil) return 0;
+        if (me.fps[0] == nil) return 0;
         var result = 0;
-        for (var i = 1; i < me.fp.getPlanSize(); i += 1) {
-            var wp = me.fp.getWP(i);
+        for (var i = 1; i < me.fps[0].getPlanSize(); i += 1) {
+            var wp = me.fps[0].getWP(i);
             if (wp.wp_role == 'star' or wp.wp_role == 'approach' or wp.wp_role == 'missed' or wp.wp_type == 'runway') {
                 break;
             }
@@ -341,14 +348,14 @@ var FlightPlanModule = {
         return result;
     },
 
-    appendViaTo: func (viaTo, appendAfter = nil) {
+    appendViaTo: func (viaTo, appendAfter = nil, fpix = 0) {
         printf("Append VIA-TO: %s", viaTo);
         var s = split('.', viaTo);
         debug.dump(s);
         var newWaypoints = [];
         var appendIndex = (appendAfter == nil) ? me.findLastEnrouteWP() : appendAfter;
         var targetFix = nil;
-        var refWP = me.fp.getWP(appendIndex);
+        var refWP = me.fps[fpix].getWP(appendIndex);
         var ref = geo.aircraft_position();
         printf("Append after: %i (%s)", appendIndex, (refWP == nil) ? "<nil>" : refWP.id);
         if (refWP != nil) {
@@ -378,7 +385,7 @@ var FlightPlanModule = {
             if (targetFix != nil) {
                 me.startEditing();
                 var wp = createWP(candidates[0], candidates[0].id);
-                me.fp.insertWP(wp, appendIndex + 1);
+                me.fps[fpix].insertWP(wp, appendIndex + 1);
                 printf("Insert %s at %i", candidates[0].id, appendIndex);
             }
             else {
@@ -389,7 +396,7 @@ var FlightPlanModule = {
             var wp = createViaTo(s[0], s[1]);
             if (wp != nil) {
                 me.startEditing();
-                me.fp.insertWP(wp, appendIndex + 1);
+                me.fps[fpix].insertWP(wp, appendIndex + 1);
             }
             else {
                 me.mcdu.setScratchpadMsg("NO WAYPOINT", mcdu_yellow);
@@ -397,9 +404,9 @@ var FlightPlanModule = {
         }
     },
 
-    deleteWP: func (wpi) {
+    deleteWP: func (wpi, fpix=0) {
         if (wpi > 0) {
-            me.fp.deleteWP(wpi);
+            me.fps[fpix].deleteWP(wpi);
         }
     },
 
